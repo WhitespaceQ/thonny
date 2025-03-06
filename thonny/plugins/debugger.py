@@ -819,11 +819,38 @@ class BaseExpressionBox:
 
         self._set_position_make_visible(x, y)
 
+    def _has_cjk_group(self, text):
+        # adapted from https://stackoverflow.com/a/77829880/
+        cjk_character_groups = {
+            'CJK', 'CHINESE', 'KATAKANA', 'HANGUL', 
+            'HIRAGANA', 'BOPOMOFO', 'KANBUN', 
+            'KANGXI', 'IDEOGRAPHIC', 'CJK UNIFIED IDEOGRAPHS EXTENSION A',
+            'CJK UNIFIED IDEOGRAPHS EXTENSION B', 'CJK UNIFIED IDEOGRAPHS EXTENSION C',
+            'CJK UNIFIED IDEOGRAPHS EXTENSION D', 'CJK UNIFIED IDEOGRAPHS EXTENSION E',
+            'CJK UNIFIED IDEOGRAPHS EXTENSION F', 'CJK COMPATIBILITY IDEOGRAPHS'
+        }
+        for char in text:
+            try:
+                char_name = unicodedata.name(char)
+            except ValueError:
+                continue
+            if any(name in char_name for name in cjk_character_groups):
+                return True
+        return False
+
     def _update_size(self):
         content = self.text.get("1.0", tk.END)
         lines = content.splitlines()
+        multibyte_char_count = None
+        
+        if self._has_cjk_group(content):
+            # wcwidth might provide a more accurate character width calculation, but it's not in the standard library
+            # https://github.com/thonny/thonny/issues/3566#issuecomment-2702620053
+            multibyte_char_count = sum((1, 2)[east_asian_width(c) in 'FWA'] for c in content) - 1
+            
         self.text["height"] = len(lines)
-        self.text["width"] = max(map(len, lines))
+        # don't change the original implementation if no CJK-adjacent charset is detected
+        self.text["width"] = max(map(len, lines)) if multibyte_char_count is None else multibyte_char_count
 
     def _set_position_make_visible(self, rel_x, rel_y):
         raise NotImplementedError()
