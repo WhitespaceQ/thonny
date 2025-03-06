@@ -7,6 +7,8 @@ import ast
 import os.path
 import tkinter as tk
 import tokenize
+import unicodedata
+from unicodedata import east_asian_width
 from _tkinter import TclError
 from logging import getLogger
 from tkinter import ttk
